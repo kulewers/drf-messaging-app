@@ -16,34 +16,37 @@ class CustomUserSerializer(serializers.ModelSerializer):
 
 
 class MessageSerializer(serializers.ModelSerializer):
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        if self.instance is not None:
+            self.fields.get('chat').read_only = True
+            self.fields.get('parent_message').read_only = True
+
     creator = serializers.ReadOnlyField(source='creator.username')
 
     def validate(self, data):
-        parent_message = data['parent_message']
-        if parent_message is not None and parent_message.chat is not data['chat']:
-            raise serializers.ValidationError({
-                "parent_message": "parent message must belong to the same chat as the child"
-            })
-        
-        if data['chat'] not in self.context['request'].user.chats.all():
-            raise serializers.ValidationError({
-                "chat": "message creator is not a member of the chat"
-            })
+        if self.context['request'].method == 'POST':
+            parent_message = data.get('parent_message')
+            if parent_message is not None and parent_message.chat is not data['chat']:
+                raise serializers.ValidationError({
+                    "parent_message": "parent message must belong to the same chat as the child"
+                })
+            
+            if data.get('chat') not in self.context['request'].user.chats.all():
+                raise serializers.ValidationError({
+                    "chat": "message creator is not a member of the chat"
+                })
 
         return data
+    
+    def update(self, instance, validated_data):
+        validated_data.pop('chat', None)
+        return super().update(instance, validated_data)
         
     class Meta:
         model = Message
         fields = ['id', 'chat', 'creator', 'body', 'created', 'parent_message']
-
-
-class MessageEditSerializer(serializers.ModelSerializer):
-    creator = serializers.ReadOnlyField(source='creator.username')
-    chat = serializers.CharField(read_only=True)
-    class Meta:
-        model = Message
-        fields = ['id', 'chat', 'creator', 'body', 'created', 'parent_message']
-
 
     
 class ChatSerializer(serializers.ModelSerializer):

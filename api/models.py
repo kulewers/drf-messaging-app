@@ -10,6 +10,9 @@ class Chat(models.Model):
     def __str__(self):
         return self.name
     
+    class Meta:
+        ordering = ['-created']
+    
 
 class Message(models.Model):
     chat = models.ForeignKey(Chat, on_delete=models.CASCADE, related_name='messages')
@@ -20,6 +23,9 @@ class Message(models.Model):
 
     def __str__(self):
         return self.body
+    
+    class Meta:
+        ordering = ['-created']
 
 
 class ChatParticipants(models.Model):
